@@ -287,7 +287,7 @@ main:focus { outline: none; }
 .cta-row p { grid-column: 1 / span 5; margin: 0; color: var(--mist); font-size: var(--t-s); }
 @media (max-width: 720px) { .cta-row p { grid-column: 1 / -1; } }
 
-.foot { padding: 0 var(--pad) 28px; }
+.foot { padding: 0 var(--pad) 28px; overflow: hidden; }
 .on-dark > .foot:first-child { padding-top: clamp(48px, 6vw, 80px); }
 .on-dark > .foot:first-child .foot-top { border-top: 0; padding-top: 0; }
 .foot-top { display: grid; grid-template-columns: repeat(12, 1fr); gap: var(--gap); padding: 40px 0 72px; border-top: 1px solid rgba(243, 244, 244, .14); }

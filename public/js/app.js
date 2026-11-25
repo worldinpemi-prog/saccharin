@@ -157,6 +157,9 @@ async function render(path) {
     if (typeof out === 'function') cleanups.push(out);
   }
   document.title = pageTitle(route, data);
+  fitFootName();
+  resizeFns.push(fitFootName);
+  if (document.fonts) document.fonts.ready.then(fitFootName);
   observeReveals();
   onScroll();
 
@@ -224,6 +227,21 @@ function closeMenu() {
 document.addEventListener('keydown', (e) => e.key === 'Escape' && closeMenu());
 
 /* ───────────── 공통 조각: 푸터 ───────────── */
+
+// 푸터 큰 닉네임을 화면 폭에 맞춰 줄임 (닉네임 길이가 바뀌어도 가로 넘침 없음)
+function fitFootName() {
+  for (const el of $$('.foot-name', main)) {
+    el.style.fontSize = '';
+    const range = document.createRange();
+    range.selectNodeContents(el);
+    const textW = range.getBoundingClientRect().width;
+    const avail = el.clientWidth;
+    if (textW > avail && textW > 0) {
+      const base = parseFloat(getComputedStyle(el).fontSize);
+      el.style.fontSize = `${Math.floor(base * (avail / textW) * 0.98 * 10) / 10}px`;
+    }
+  }
+}
 
 function footerHTML(s, links, { withCta = true } = {}) {
   const year = new Date().getFullYear();
