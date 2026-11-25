@@ -42,6 +42,7 @@ const real = {
   login: (password) => req('POST', '/api/admin/login', { password }),
   logout: () => req('POST', '/api/admin/logout'),
   stats: () => req('GET', '/api/admin/stats'),
+  visits: () => req('GET', '/api/admin/visits'),
   adminWorks: () => req('GET', '/api/admin/works'),
   saveWork: (w) => (w.id ? req('PUT', '/api/admin/works/' + w.id, w) : req('POST', '/api/admin/works', w)),
   deleteWork: (id) => req('DELETE', '/api/admin/works/' + id),

@@ -44,7 +44,7 @@ const store = {
     status,
     stage,
     subtitle,
-    tags: tags.split(', '),
+    description: tags.split(', ').join(' · ') + ' 장르의 작품.',
     thumb: D(img),
     thumb_key: 'demo',
     links: status === 'published' ? [{ label: '대화하러 가기', url: 'https://caveduck.io/user/saccharin' }] : [],
@@ -107,12 +107,16 @@ export default {
     return tick({ ok: true });
   },
   stats: () => tick({ unseen: store.questions.filter((q) => !q.seen).length }),
+  visits: () => {
+    const days = Array.from({ length: 30 }, (_, i) => ({ day: new Date(Date.now() - i * 86400000).toISOString().slice(0, 10), count: Math.round(20 + 15 * Math.sin(i / 3) + (i % 5) * 3) }));
+    const sum = (n) => days.slice(0, n).reduce((a, b) => a + b.count, 0);
+    return tick({ today: days[0].count, yesterday: days[1].count, last7: sum(7), last30: sum(30), days });
+  },
   adminWorks: () => tick([...store.works].sort(sortWorks)),
   saveWork: async (w) => {
     if (!String(w.title || '').trim()) throw err('제목 입력 필요');
     const data = {
       ...w,
-      tags: String(w.tags || '').split(',').map((t) => t.trim()).filter(Boolean),
       slug: w.slug || String(w.title).trim().toLowerCase().replace(/\s+/g, '-'),
       thumb: w.thumb || '',
       updated_at: Date.now(),

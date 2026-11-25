@@ -53,6 +53,7 @@ async function renderDashboard(main, ctx) {
       <button role="tab" data-tab="questions">질문함<span class="badge q-badge" hidden></span></button>
       <button role="tab" data-tab="links">링크</button>
       <button role="tab" data-tab="site">사이트 설정</button>
+      <button role="tab" data-tab="visits">방문자</button>
       <span class="spacer"></span>
       <a class="btn btn-sm" href="${href('/')}" data-link>사이트 보기</a>
       <button class="btn btn-sm logout" type="button">로그아웃</button>
@@ -60,7 +61,7 @@ async function renderDashboard(main, ctx) {
     <div class="admin-body"></div>
   </section>`;
   const body = $('.admin-body', main);
-  const tabs = { works: tabWorks, questions: tabQuestions, links: tabLinks, site: tabSite };
+  const tabs = { works: tabWorks, questions: tabQuestions, links: tabLinks, site: tabSite, visits: tabVisits };
   const open = async (name) => {
     $$('.admin-tabs [role=tab]', main).forEach((b) => b.setAttribute('aria-selected', String(b.dataset.tab === name)));
     body.innerHTML = '<p class="muted">불러오는 중…</p>';
@@ -142,7 +143,7 @@ async function tabWorks(body, ctx) {
     if (b) edit(works.find((w) => w.id === Number(b.dataset.id)));
   });
   $('.new-work', body).addEventListener('click', () =>
-    edit({ kind: 'character', status: 'hidden', stage: 0, title: '', subtitle: '', tags: [], thumb: '', thumb_key: '', body_html: '', links: [], sort: 0, slug: '' })
+    edit({ kind: 'character', status: 'hidden', stage: 0, title: '', subtitle: '', description: '', thumb: '', thumb_key: '', body_html: '', links: [], sort: 0, slug: '' })
   );
 
   let offPreview = null;
@@ -158,10 +159,8 @@ async function tabWorks(body, ctx) {
       </div>
       <div class="field"><label>제목</label><input class="input" name="title" required maxlength="120"></div>
       <div class="field"><label>한 줄 소개</label><input class="input" name="subtitle" maxlength="300"></div>
-      <div class="row2">
-        <div class="field"><label>태그 (쉼표로 구분)</label><input class="input" name="tags" placeholder="로맨스 코미디, 현대물"></div>
-        <div class="field"><label>주소에 쓰일 이름 (비우면 제목으로 자동)</label><input class="input" name="slug" placeholder="예: kang-taeju"></div>
-      </div>
+      <div class="field"><label>설명 (작품 상세·제작중 목록에 표시)</label><textarea class="textarea" name="description" maxlength="1000" style="min-height:110px"></textarea></div>
+      <div class="field"><label>주소에 쓰일 이름 (비우면 제목으로 자동)</label><input class="input" name="slug" placeholder="예: kang-taeju"></div>
       <div class="field"><span class="field-label">썸네일 (세로 4:5 비율 추천)</span>
         <div class="dropzone"><div class="pv thumb-pv">${w.thumb ? `<img src="${esc(w.thumb)}" alt="">` : ''}</div>
           <div class="btns"><label class="btn btn-sm attach-btn thumb-btn">이미지 올리기<input type="file" accept="image/*"></label><button class="btn btn-sm thumb-clear" type="button">빼기</button></div></div>
@@ -187,7 +186,7 @@ async function tabWorks(body, ctx) {
     f.stage.value = String(w.stage || 0);
     f.title.value = w.title;
     f.subtitle.value = w.subtitle;
-    f.tags.value = (w.tags || []).join(', ');
+    f.description.value = w.description || '';
     f.slug.value = w.slug || '';
     f.links.value = (w.links || []).map((l) => `${l.label} | ${l.url}`).join('\n');
     f.body_html.value = w.body_html || '';
@@ -267,7 +266,7 @@ async function tabWorks(body, ctx) {
         stage: Number(f.stage.value),
         title: f.title.value,
         subtitle: f.subtitle.value,
-        tags: f.tags.value,
+        description: f.description.value,
         slug: f.slug.value,
         thumb_key: thumbKey,
         thumb: thumbUrl,
@@ -451,4 +450,24 @@ async function tabSite(body, ctx) {
       toast(ex.message);
     }
   });
+}
+
+/* ───────── 방문자 ───────── */
+
+async function tabVisits(body) {
+  const v = await api.visits();
+  const max = Math.max(1, ...v.days.map((d) => d.count));
+  body.innerHTML = `<div class="visit-sum">
+      <div><span>오늘</span><strong>${v.today}</strong></div>
+      <div><span>어제</span><strong>${v.yesterday}</strong></div>
+      <div><span>최근 7일</span><strong>${v.last7}</strong></div>
+      <div><span>최근 30일</span><strong>${v.last30}</strong></div>
+    </div>
+    <ul class="visit-rows">${v.days
+      .map(
+        (d, i) => `<li class="${i === 0 ? 'today' : ''}"><span>${esc(d.day.slice(5).replace('-', '.'))}${i === 0 ? ' 오늘' : ''}</span>
+        <span class="bar"><i style="width:${(d.count / max) * 100}%"></i></span><span class="n">${d.count}</span></li>`
+      )
+      .join('')}</ul>
+    <p class="small muted" style="margin:18px 0 0">하루 기준 순 방문자 수 (한국 시간). 같은 사람이 여러 번 방문해도 하루 1명으로 집계. 관리자 로그인 상태의 방문과 검색 로봇은 제외</p>`;
 }

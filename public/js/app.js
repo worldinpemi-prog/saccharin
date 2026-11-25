@@ -389,7 +389,8 @@ pages.home = {
           (w) => `<article class="hwip-card">
           <div class="card-media">${media(w.thumb, w.title, w.kind)}</div>
           <div class="card-info"><h3 class="card-title">${esc(w.title)}</h3><span class="card-kind">${esc(KIND_LABEL[w.kind])}</span>
-          ${w.subtitle ? `<p class="card-sub">${esc(w.subtitle)}</p>` : ''}</div>
+          ${w.subtitle ? `<p class="card-sub">${esc(w.subtitle)}</p>` : ''}
+          ${w.description ? `<p class="card-desc">${esc(w.description)}</p>` : ''}</div>
           <div style="margin-top:12px">${stageHTML(w.stage)}</div>
         </article>`
         )
@@ -583,9 +584,9 @@ pages.work = {
           <a class="work-back" href="${href(w.status === 'wip' ? '/wip' : '/works' + (w.kind === 'world' ? '?tab=world' : ''))}" data-link>${w.status === 'wip' ? 'In progress' : 'Works'} / ${esc(KIND_LABEL[w.kind])}</a>
           <h1 class="work-title rv">${esc(w.title)}</h1>
           ${w.subtitle ? `<p class="work-sub rv">${esc(w.subtitle)}</p>` : ''}
+          ${w.description ? `<p class="work-desc rv">${esc(w.description)}</p>` : ''}
           <dl class="work-meta rv">
             <div><dt>분류</dt><dd>${esc(KIND_LABEL[w.kind])}</dd></div>
-            ${w.tags.length ? `<div><dt>태그</dt><dd>${w.tags.map(esc).join(', ')}</dd></div>` : ''}
             <div><dt>공개</dt><dd>${fmtDate(w.created_at)}</dd></div>
             ${w.status === 'wip' ? `<div>${stageHTML(w.stage)}</div>` : ''}
           </dl>
@@ -656,7 +657,7 @@ pages.wip = {
               (w) => `<li class="wip-row rv" data-img="${esc(w.thumb)}">
           <div class="wip-thumb">${media(w.thumb, w.title, w.kind)}</div>
           <h2 class="wip-name">${esc(w.title)}</h2>
-          <p class="wip-concept">${esc(w.subtitle)}</p>
+          <div class="wip-concept">${w.subtitle ? `<p class="wip-sub">${esc(w.subtitle)}</p>` : ''}${w.description ? `<p class="wip-desc">${esc(w.description)}</p>` : ''}</div>
           ${stageHTML(w.stage)}
         </li>`
             )

@@ -28,9 +28,11 @@ public/fonts/         Archivo(가변, wdth 62–125) + Pretendard 자체 호스�
 - secrets: `ADMIN_PASSWORD`, `SESSION_SECRET`, `TURNSTILE_SECRET`, `DISCORD_WEBHOOK_URL`
 
 ## 데이터
-- works: kind(character|world), status(published|wip|hidden), stage(0기획/1작업/2테스트), title, subtitle, tags(쉼표), thumb(R2 key), body_html, links(JSON), sort
+- works: kind(character|world), status(published|wip|hidden), stage(0기획/1작업/2테스트), title, subtitle(한 줄 소개), description(설명, 상세·제작중 목록에 표시), thumb(R2 key), body_html, links(JSON), sort
+  - `tags` 칸은 옛 데이터용으로만 남아 있음(사용 안 함, 태그 기능 없음)
 - questions: token_hash(비밀 링크 해시), body, images(R2 key 배열), answer, seen, ip_hash
 - links, settings(nickname, hero_note, about, hero_image), blocks, login_attempts
+- visits(day, vid): 일일 순 방문자. 한국 시간 기준, vid = IP+UA+날짜 해시. 관리자·봇 제외, 90일 지난 건 자동 삭제. 관리 페이지 '방문자' 탭에서만 보임
 - 이미지: `pub/…` 공개(/media/pub/…), `q/…` 질문 첨부 → 관리자 또는 질문자 토큰으로만 열람
 - 스키마 변경 시 `SCHEMA` 배열에 `ALTER`/`CREATE IF NOT EXISTS`로 추가 (기존 데이터 보존)
 

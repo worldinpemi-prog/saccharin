@@ -70,6 +70,7 @@ const SCHEMA = [
   `CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL)`,
   `CREATE TABLE IF NOT EXISTS blocks (ip_hash TEXT PRIMARY KEY, created_at INTEGER NOT NULL)`,
   `CREATE TABLE IF NOT EXISTS login_attempts (ip_hash TEXT NOT NULL, ts INTEGER NOT NULL)`,
+  `CREATE TABLE IF NOT EXISTS visits (day TEXT NOT NULL, vid TEXT NOT NULL, PRIMARY KEY (day, vid))`,
   `CREATE INDEX IF NOT EXISTS idx_q_ip ON questions(ip_hash, created_at)`,
   `CREATE INDEX IF NOT EXISTS idx_login ON login_attempts(ip_hash, ts)`,
 ];
@@ -78,6 +79,14 @@ let schemaReady = false;
 async function ensureSchema(env) {
   if (schemaReady) return;
   await env.DB.batch(SCHEMA.map((s) => env.DB.prepare(s)));
+  // 태그 → 설명 전환: description 칸이 없으면 추가하고, 기존 태그 내용을 설명으로 옮김
+  const { results: cols } = await env.DB.prepare('PRAGMA table_info(works)').all();
+  if (!cols.some((c) => c.name === 'description')) {
+    await env.DB.batch([
+      env.DB.prepare("ALTER TABLE works ADD COLUMN description TEXT NOT NULL DEFAULT ''"),
+      env.DB.prepare("UPDATE works SET description = REPLACE(tags, ',', ', ') WHERE description = ''"),
+    ]);
+  }
   schemaReady = true;
 }
 
@@ -200,7 +209,7 @@ function workOut(row, withBody = false) {
     stage: row.stage,
     title: row.title,
     subtitle: row.subtitle,
-    tags: row.tags ? row.tags.split(',').map((t) => t.trim()).filter(Boolean) : [],
+    description: row.description || '',
     thumb: mediaUrl(row.thumb),
     thumb_key: row.thumb,
     links: safeJson(row.links, []),
@@ -417,14 +426,13 @@ function workIn(body) {
         .map((l) => ({ label: String(l.label || '').trim().slice(0, 40), url: cleanUrl(l.url) }))
         .filter((l) => l.url)
     : [];
-  const tags = Array.isArray(body.tags) ? body.tags.join(',') : String(body.tags || '');
   return {
     kind,
     status,
     stage,
     title: String(body.title || '').trim().slice(0, 120),
     subtitle: String(body.subtitle || '').trim().slice(0, 300),
-    tags: tags.split(',').map((t) => t.trim()).filter(Boolean).slice(0, 12).join(','),
+    description: String(body.description || '').trim().slice(0, 1000),
     thumb: String(body.thumb_key || '').startsWith('pub/') ? String(body.thumb_key) : '',
     body_html: String(body.body_html || ''),
     links: JSON.stringify(links),
@@ -451,20 +459,21 @@ async function adminWorks(request, env, id) {
     const t = now();
     if (m === 'POST') {
       const r = await env.DB.prepare(
-        `INSERT INTO works (slug, kind, status, stage, title, subtitle, tags, thumb, body_html, links, sort, created_at, updated_at)
+        `INSERT INTO works (slug, kind, status, stage, title, subtitle, description, thumb, body_html, links, sort, created_at, updated_at)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
       )
-        .bind(w.slug, w.kind, w.status, w.stage, w.title, w.subtitle, w.tags, w.thumb, w.body_html, w.links, w.sort, t, t)
+        .bind(w.slug, w.kind, w.status, w.stage, w.title, w.subtitle, w.description, w.thumb, w.body_html, w.links, w.sort, t, t)
         .run();
       id = r.meta.last_row_id;
     } else {
       await env.DB.prepare(
-        `UPDATE works SET slug=?, kind=?, status=?, stage=?, title=?, subtitle=?, tags=?, thumb=?, body_html=?, links=?, sort=?, updated_at=? WHERE id=?`
+        `UPDATE works SET slug=?, kind=?, status=?, stage=?, title=?, subtitle=?, description=?, thumb=?, body_html=?, links=?, sort=?, updated_at=? WHERE id=?`
       )
-        .bind(w.slug, w.kind, w.status, w.stage, w.title, w.subtitle, w.tags, w.thumb, w.body_html, w.links, w.sort, t, id)
+        .bind(w.slug, w.kind, w.status, w.stage, w.title, w.subtitle, w.description, w.thumb, w.body_html, w.links, w.sort, t, id)
         .run();
     }
     const row = await env.DB.prepare('SELECT * FROM works WHERE id = ?').bind(id).first();
+    if (!row) return fail(404, '작품을 찾을 수 없음');
     return json(workOut(row, true));
   }
   return fail(405, 'method not allowed');
@@ -568,6 +577,48 @@ async function adminSettings(request, env) {
   return json(await getSettings(env));
 }
 
+/* ───────────── 방문자 수 (관리자 전용) ───────────── */
+
+function kstDay(offsetDays = 0) {
+  return new Date(Date.now() + 9 * 3600 * 1000 - offsetDays * 86400 * 1000).toISOString().slice(0, 10);
+}
+const BOT_UA = /bot|crawl|spider|slurp|preview|fetch|monitor|headless|lighthouse|curl|wget|python|discord|kakaotalk-scrap|facebookexternalhit/i;
+
+function isPageView(request, url, res) {
+  if (request.method !== 'GET' || res.status !== 200) return false;
+  if (!(res.headers.get('content-type') || '').includes('text/html')) return false;
+  if (url.pathname.startsWith('/admin')) return false;
+  const ua = request.headers.get('user-agent') || '';
+  if (!ua || BOT_UA.test(ua)) return false;
+  const dest = request.headers.get('sec-fetch-dest');
+  return !dest || dest === 'document';
+}
+
+async function countVisit(request, env) {
+  try {
+    if (await isAdmin(request, env)) return; // 내 방문은 세지 않음
+    await ensureSchema(env);
+    const day = kstDay();
+    const vid = (await sha256(clientIp(request) + '|' + (request.headers.get('user-agent') || '') + '|' + day + '|' + (env.SESSION_SECRET || 'dev'))).slice(0, 22);
+    await env.DB.prepare('INSERT OR IGNORE INTO visits (day, vid) VALUES (?, ?)').bind(day, vid).run();
+  } catch (e) {
+    console.log('visit count failed', e);
+  }
+}
+
+async function adminVisits(env) {
+  const from = kstDay(29);
+  await env.DB.prepare('DELETE FROM visits WHERE day < ?').bind(kstDay(90)).run();
+  const { results } = await env.DB.prepare('SELECT day, COUNT(*) AS n FROM visits WHERE day >= ? GROUP BY day').bind(from).all();
+  const map = Object.fromEntries(results.map((r) => [r.day, r.n]));
+  const days = Array.from({ length: 30 }, (_, i) => {
+    const d = kstDay(i);
+    return { day: d, count: map[d] || 0 };
+  });
+  const sum = (n) => days.slice(0, n).reduce((a, b) => a + b.count, 0);
+  return json({ today: days[0].count, yesterday: days[1].count, last7: sum(7), last30: sum(30), days });
+}
+
 async function adminStats(env) {
   const r = await env.DB.prepare("SELECT COUNT(*) AS n FROM questions WHERE seen = 0").first();
   return json({ unseen: r ? r.n : 0 });
@@ -610,6 +661,8 @@ async function handleApi(request, env, ctx, url) {
         return adminSettings(request, env);
       case 'stats':
         return adminStats(env);
+      case 'visits':
+        return adminVisits(env);
     }
   }
   return fail(404, 'not found');
@@ -639,7 +692,9 @@ export default {
       if (url.pathname.startsWith('/media/')) {
         return await routeMedia(url.pathname, request, env);
       }
-      return await handleAssets(request, env, url);
+      const res = await handleAssets(request, env, url);
+      if (isPageView(request, url, res)) ctx.waitUntil(countVisit(request, env));
+      return res;
     } catch (err) {
       console.log('error', err && err.stack);
       return fail(500, '서버 오류. 잠시 뒤 다시 시도');
