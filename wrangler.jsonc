@@ -1,0 +1,43 @@
+{
+  // Cloudflare Worker 설정 — README.md의 순서대로 REPLACE_ 로 시작하는 값만 바꾸면 됩니다.
+  "name": "saccharinfever",
+  "main": "src/worker.js",
+  "compatibility_date": "2025-09-01",
+
+  // 사이트 화면 파일(public 폴더). 모든 요청을 Worker가 먼저 받아서 API·이미지·화면을 나눠 보냅니다.
+  "assets": {
+    "directory": "./public",
+    "binding": "ASSETS",
+    "run_worker_first": true
+  },
+
+  // 작품·질문·링크·설정이 저장되는 데이터베이스 (README 2단계)
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "saccharinfever-db",
+      "database_id": "REPLACE_WITH_D1_DATABASE_ID"
+    }
+  ],
+
+  // 이미지 저장소 (README 3단계)
+  "r2_buckets": [
+    {
+      "binding": "MEDIA",
+      "bucket_name": "saccharinfever-media"
+    }
+  ],
+
+  // 공개해도 되는 값만 여기에. 비밀번호·웹훅 주소 등은 대시보드의 '비밀(Secret)'로 넣습니다.
+  "vars": {
+    "SITE_URL": "https://sccharinfever.com",
+    "TURNSTILE_SITEKEY": "REPLACE_WITH_TURNSTILE_SITE_KEY"
+  },
+
+  // 도메인 연결 (README 6단계에서 대시보드로 연결해도 됩니다)
+  "routes": [
+    { "pattern": "sccharinfever.com", "custom_domain": true }
+  ],
+
+  "observability": { "enabled": true }
+}

@@ -1,0 +1,13 @@
+{
+  "name": "saccharinfever",
+  "private": true,
+  "version": "1.0.0",
+  "description": "sccharinfever.com — 개인 홈페이지 (Cloudflare Workers + D1 + R2)",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy"
+  },
+  "devDependencies": {
+    "wrangler": "^4.0.0"
+  }
+}
