@@ -16,7 +16,7 @@
     {
       "binding": "DB",
       "database_name": "saccharinfever-db",
-      "database_id": "REPLACE_WITH_D1_DATABASE_ID"
+      "database_id": "548a97ac-b395-4818-8405-8e0e427c1e0d"
     }
   ],
 
@@ -31,7 +31,7 @@
   // 공개해도 되는 값만 여기에. 비밀번호·웹훅 주소 등은 대시보드의 '비밀(Secret)'로 넣습니다.
   "vars": {
     "SITE_URL": "https://sccharinfever.com",
-    "TURNSTILE_SITEKEY": "REPLACE_WITH_TURNSTILE_SITE_KEY"
+    "TURNSTILE_SITEKEY": "0x4AAAAAAGR7HVlJnhiRIPni"
   },
 
   // 도메인 연결 (README 6단계에서 대시보드로 연결해도 됩니다)
